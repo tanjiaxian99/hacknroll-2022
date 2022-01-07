@@ -16,12 +16,9 @@ bot.
 import logging
 from dotenv import load_dotenv
 import os
-import matplotlib.pyplot as plt
-import yfinance as yf
-yf.pdr_override()
 
-from telegram import Update, ForceReply, constants
-from telegram.ext import Updater, CommandHandler, MessageHandler, Filters, CallbackContext
+from telegram import Update, ForceReply, constants, InlineKeyboardButton, InlineKeyboardMarkup
+from telegram.ext import Updater, CommandHandler, MessageHandler, Filters, CallbackContext, CallbackQueryHandler
 
 # Enable logging
 logging.basicConfig(
@@ -33,6 +30,15 @@ logger = logging.getLogger(__name__)
 # Get token value
 load_dotenv()
 token = os.getenv("TOKEN")
+
+# For /stocks command
+from selenium import webdriver
+from webdriver_manager.chrome import ChromeDriverManager
+from selenium.webdriver.common.keys import Keys
+import time
+from PIL import Image
+from io import BytesIO
+import yfinance as yf
 
 # Define a few command handlers. These usually take the two arguments update and
 # context.
@@ -49,13 +55,6 @@ def help_command(update: Update, context: CallbackContext) -> None:
     """Send a message when the command /help is issued."""
     update.message.reply_text('Help!')
 
-from selenium import webdriver
-from webdriver_manager.chrome import ChromeDriverManager
-from selenium.webdriver.common.keys import Keys
-import time
-from PIL import Image
-from io import BytesIO
-
 def stocks_command(update: Update, context: CallbackContext) -> None:
     # Ensure that a stock name has been given
     if len(context.args) == 0:
@@ -63,11 +62,34 @@ def stocks_command(update: Update, context: CallbackContext) -> None:
         "E.g. /stocks apple 1m")
         return
 
+    stock_name = context.args[0]
+
+    reply_markup = InlineKeyboardMarkup([
+        [
+            InlineKeyboardButton("1D", callback_data="1D_" + stock_name),
+            InlineKeyboardButton("5D", callback_data="5D_" + stock_name),
+            InlineKeyboardButton("1M", callback_data="1M_" + stock_name),
+            InlineKeyboardButton("6M", callback_data="6M_" + stock_name),
+        ],
+        [
+            InlineKeyboardButton("YTD", callback_data="YTD_" + stock_name),
+            InlineKeyboardButton("1Y", callback_data="1Y_" + stock_name),
+            InlineKeyboardButton("5Y", callback_data="5Y_" + stock_name),
+            InlineKeyboardButton("MAX", callback_data="MAX_" + stock_name),
+        ]
+    ])
+    update.message.reply_text("Which time period are you interested in?", reply_markup=reply_markup)
+
+def stocks_callback(update: Update, context: CallbackContext) -> None:
+    query = update.callback_query
+    query.answer()
+    choice = query.data
+    [time_period, stock_name] = choice.split("_")
+
     # Send wait message
-    wait_message = update.message.reply_text("We are fetching your stock information. Hang on tight!")
+    wait_message = update.effective_message.reply_text("We are fetching your stock information. Hang on tight!")
 
     # Opens page for associated stock
-    stock_name = context.args[0]
     driver = webdriver.Chrome(ChromeDriverManager().install())
     driver.get("https://www.google.com/finance/")
     element = driver.find_element_by_xpath("//body/c-wiz[1]/div[1]/div[3]/div[3]/div[1]/div[1]/div[1]/div[1]/input[2]")
@@ -84,11 +106,8 @@ def stocks_command(update: Update, context: CallbackContext) -> None:
         update.message.reply_text("Invalid stock name. Please key in a valid stock name.")
         return
 
-    # Opens page with the correct time period if it exists
-    if len(context.args) >= 2:
-        time_period = context.args[1]
-        url = url + "?window=" + time_period
-        driver.get(url)
+    url = url + "?window=" + time_period
+    driver.get(url)
     
     # Retrieve the screenshot
     time.sleep(0.5)
@@ -111,11 +130,11 @@ def stocks_command(update: Update, context: CallbackContext) -> None:
         caption = caption_format.format(url=url, symbol=ticker_info["symbol"], open=ticker_info["open"], 
             previous_close=ticker_info["previousClose"], volume=ticker_info["volume"])
 
-        wait_message.delete()
-        update.message.reply_photo(im, caption=caption, parse_mode=constants.PARSEMODE_HTML)
+        # wait_message.delete()
+        update.effective_message.reply_photo(im, caption=caption, parse_mode=constants.PARSEMODE_HTML)
     except:
-        wait_message.delete()
-        update.message.reply_photo(im, caption="Unable to retrieve ticker information")
+        # wait_message.delete()
+        update.effective_message.reply_photo(im, caption="Unable to retrieve ticker information")
 
 def main() -> None:
     """Start the bot."""
@@ -129,6 +148,7 @@ def main() -> None:
     dispatcher.add_handler(CommandHandler("start", start))
     dispatcher.add_handler(CommandHandler("help", help_command))
     dispatcher.add_handler(CommandHandler("stocks", stocks_command))
+    dispatcher.add_handler(CallbackQueryHandler(stocks_callback))
 
     # Start the Bot
     updater.start_polling()
