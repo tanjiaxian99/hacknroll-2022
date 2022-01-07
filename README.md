@@ -12,7 +12,7 @@ This was written in Python 3.8 and built as our team's submission for Hack & Rol
 
 We obtained real-time stock market data from [`yfinance`](https://github.com/ranaroussi/yfinance).
 
-Charting is done using `Selenium` API, .
+Charting is done using the [`Selenium`](https://pypi.org/project/selenium/) library, which visits Google Finance and automatically keys in the name of the input stock. A cropped screenshot is then taken and displayed to the user. The data from the site is also used to retrieve other ticker information from the yfinance library.
 
 ### Investment Tracker
 
