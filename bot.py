@@ -29,7 +29,7 @@ logger = logging.getLogger(__name__)
 
 # Get token value
 load_dotenv()
-token = os.getenv("TOKEN")
+TOKEN = os.getenv("TOKEN")
 
 # For /stocks command
 from selenium import webdriver
@@ -39,6 +39,8 @@ import time
 from PIL import Image
 from io import BytesIO
 import yfinance as yf
+
+PORT = int(os.environ.get("PORT", 5000))
 
 # Define a few command handlers. These usually take the two arguments update and
 # context.
@@ -140,7 +142,7 @@ def stocks_callback(update: Update, context: CallbackContext) -> None:
 def main() -> None:
     """Start the bot."""
     # Create the Updater and pass it your bot's token.
-    updater = Updater(token)
+    updater = Updater(TOKEN)
 
     # Get the dispatcher to register handlers
     dispatcher = updater.dispatcher
@@ -152,7 +154,10 @@ def main() -> None:
     dispatcher.add_handler(CallbackQueryHandler(stocks_callback))
 
     # Start the Bot
-    updater.start_polling()
+    updater.start_webhook(listen="0.0.0.0",
+                          port=int(PORT),
+                          url_path=TOKEN)
+    updater.bot.setWebhook('https://floating-earth-81212.herokuapp.com/' + TOKEN)
 
     # Run the bot until you press Ctrl-C or the process receives SIGINT,
     # SIGTERM or SIGABRT. This should be used most of the time, since

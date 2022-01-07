@@ -1,0 +1,6 @@
+dotenv==0.0.5
+python-telegram-bot==13.10
+selenium==4.1.0
+webdriver_manager==3.5.2
+Pillow==9.0.0
+yfinance==0.1.68
