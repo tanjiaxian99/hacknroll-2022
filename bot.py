@@ -446,6 +446,8 @@ def main() -> None:
     dispatcher.add_handler(CommandHandler("start", start))
     dispatcher.add_handler(CommandHandler("help", help_command))
     dispatcher.add_handler(CommandHandler("stocks", stocks_command))
+    dispatcher.add_handler(CommandHandler("wallet", check))
+    dispatcher.add_handler(CommandHandler("backtest", backtest))
     dispatcher.add_handler(CallbackQueryHandler(stocks_callback))
     dispatcher.add_handler(CommandHandler("gmma", gmma))
     dispatcher.add_handler(CommandHandler("cancel", cancel))
@@ -456,12 +458,13 @@ def main() -> None:
     # on non command i.e message - echo the message on Telegram
     #dispatcher.add_handler(MessageHandler(Filters.text & ~Filters.command, echo))
 
-    # Start the Bot
-    updater.start_webhook(listen="0.0.0.0",
-                          port=PORT,
-                          url_path=API_TOKEN, 
-                          webhook_url='https://floating-earth-81212.herokuapp.com/' + API_TOKEN)
+    # # Start the Bot
+    # updater.start_webhook(listen="0.0.0.0",
+    #                       port=PORT,
+    #                       url_path=API_TOKEN, 
+    #                       webhook_url='https://floating-earth-81212.herokuapp.com/' + API_TOKEN)
 
+    updater.start_polling()
     # Run the bot until you press Ctrl-C or the process receives SIGINT,
     # SIGTERM or SIGABRT. This should be used most of the time, since
     # start_polling() is non-blocking and will stop the bot gracefully.
