@@ -11,7 +11,7 @@ def backtesting(ticker, day, month, year):
     startyear = int(year)
     startmonth = int(month)
     startday = int(day)
-    command = [];
+    command = []
     
     start = dt.datetime(startyear, startmonth, startday)
 
