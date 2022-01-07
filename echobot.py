@@ -63,11 +63,15 @@ def stocks_command(update: Update, context: CallbackContext) -> None:
     element.send_keys(context.args[0])
     element.send_keys(Keys.ENTER)
 
-    time.sleep(2)
+    time.sleep(1)
+
+    url = driver.current_url
+    driver.get(url + "?window=" + context.args[1])
+    time.sleep(1)
 
     png = driver.get_screenshot_as_png()
     driver.close()
-    
+
     im = Image.open(BytesIO(png))
     im = im.crop((0, 172, 912, 648))
 
