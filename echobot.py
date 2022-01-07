@@ -20,7 +20,7 @@ import matplotlib.pyplot as plt
 import yfinance as yf
 yf.pdr_override()
 
-from telegram import Update, ForceReply
+from telegram import Update, ForceReply, constants
 from telegram.ext import Updater, CommandHandler, MessageHandler, Filters, CallbackContext
 
 # Enable logging
@@ -72,11 +72,19 @@ def stocks_command(update: Update, context: CallbackContext) -> None:
     element.send_keys(Keys.ENTER)
     time.sleep(0.5)
 
+    try:
+        url = driver.current_url
+        ticker_exchange = url.split("/")[5]
+        ticker_symbol = ticker_exchange.split(":")[0]
+    except:
+        update.message.reply_text("Invalid stock name. Please key in a valid stock name.")
+        return
+    
     # Opens page with the correct time period if it exists
     if len(context.args) >= 2:
         time_period = context.args[1]
-        url = driver.current_url
-        driver.get(url + "?window=" + time_period)
+        url = url + "?window=" + time_period
+        driver.get(url)
     
     # Retrieve the screenshot
     time.sleep(0.5)
@@ -90,7 +98,15 @@ def stocks_command(update: Update, context: CallbackContext) -> None:
     im.save(img_byte_arr, format="PNG")
     im = img_byte_arr.getvalue()
 
-    update.message.reply_photo(im)
+    # Ticker values
+    ticker = yf.Ticker(ticker_symbol)
+    ticker_info = ticker.info
+    caption_format = ("<a href=\"{url}\">{symbol}</a>\n<b>Open:</b> {open}\n<b>Previous close:</b> {previous_close}\n" + 
+        "<b>Volume:</b> {volume}")
+    caption = caption_format.format(url=url, symbol=ticker_info["symbol"], open=ticker_info["open"], 
+        previous_close=ticker_info["previousClose"], volume=ticker_info["volume"])
+
+    update.message.reply_photo(im, caption = caption, parse_mode = constants.PARSEMODE_HTML)
 
 def main() -> None:
     """Start the bot."""
