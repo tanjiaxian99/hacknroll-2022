@@ -40,7 +40,7 @@ from PIL import Image
 from io import BytesIO
 import yfinance as yf
 
-PORT = int(os.environ.get("PORT", 80))
+PORT = int(os.getenv("PORT", 80))
 
 # Define a few command handlers. These usually take the two arguments update and
 # context.
