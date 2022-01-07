@@ -63,6 +63,9 @@ def stocks_command(update: Update, context: CallbackContext) -> None:
         "E.g. /stocks apple 1m")
         return
 
+    # Send wait message
+    wait_message = update.message.reply_text("We are fetching your stock information. Hang on tight!")
+
     # Opens page for associated stock
     stock_name = context.args[0]
     driver = webdriver.Chrome(ChromeDriverManager().install())
@@ -77,9 +80,10 @@ def stocks_command(update: Update, context: CallbackContext) -> None:
         ticker_exchange = url.split("/")[5]
         ticker_symbol = ticker_exchange.split(":")[0]
     except:
+        wait_message.delete()
         update.message.reply_text("Invalid stock name. Please key in a valid stock name.")
         return
-    
+
     # Opens page with the correct time period if it exists
     if len(context.args) >= 2:
         time_period = context.args[1]
@@ -99,14 +103,19 @@ def stocks_command(update: Update, context: CallbackContext) -> None:
     im = img_byte_arr.getvalue()
 
     # Ticker values
-    ticker = yf.Ticker(ticker_symbol)
-    ticker_info = ticker.info
-    caption_format = ("<a href=\"{url}\">{symbol}</a>\n<b>Open:</b> {open}\n<b>Previous close:</b> {previous_close}\n" + 
-        "<b>Volume:</b> {volume}")
-    caption = caption_format.format(url=url, symbol=ticker_info["symbol"], open=ticker_info["open"], 
-        previous_close=ticker_info["previousClose"], volume=ticker_info["volume"])
+    try:
+        ticker = yf.Ticker(ticker_symbol)
+        ticker_info = ticker.info
+        caption_format = ("<a href=\"{url}\">{symbol}</a>\n<b>Open:</b> {open}\n<b>Previous close:</b> {previous_close}\n" + 
+            "<b>Volume:</b> {volume}")
+        caption = caption_format.format(url=url, symbol=ticker_info["symbol"], open=ticker_info["open"], 
+            previous_close=ticker_info["previousClose"], volume=ticker_info["volume"])
 
-    update.message.reply_photo(im, caption = caption, parse_mode = constants.PARSEMODE_HTML)
+        wait_message.delete()
+        update.message.reply_photo(im, caption=caption, parse_mode=constants.PARSEMODE_HTML)
+    except:
+        wait_message.delete()
+        update.message.reply_photo(im, caption="Unable to retrieve ticker information")
 
 def main() -> None:
     """Start the bot."""
