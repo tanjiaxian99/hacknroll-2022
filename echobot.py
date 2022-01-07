@@ -43,22 +43,21 @@ import yfinance as yf
 # Define a few command handlers. These usually take the two arguments update and
 # context.
 def start(update: Update, context: CallbackContext) -> None:
-    """Send a message when the command /start is issued."""
-    user = update.effective_user
-    update.message.reply_markdown_v2(
-        fr'Hi {user.mention_markdown_v2()}\!',
-        reply_markup=ForceReply(selective=True),
-    )
-
+    update.effective_message.reply_text(
+        """Welcome to InvestLiao. If you just come one, click /help then uncle will show you how""")
 
 def help_command(update: Update, context: CallbackContext) -> None:
-    """Send a message when the command /help is issued."""
-    update.message.reply_text('Help!')
+    update.message.reply_text(
+    """Come come let me show you what uncle can do.
+/wallet - maintain your stock wallet for you
+/stocks [stock_name] - show what stocks you want me to show
+/backtest [stock_name] [date] - come test our amazing algo trading software
+    """)
 
 def stocks_command(update: Update, context: CallbackContext) -> None:
     # Ensure that a stock name has been given
     if len(context.args) == 0:
-        update.message.reply_text("Wrong command leh. Give me a stock name like /stocks apple")
+        update.message.reply_text("Wrong command leh. Give me a stock name so become /stocks apple")
         return
 
     stock_name = context.args[0]
