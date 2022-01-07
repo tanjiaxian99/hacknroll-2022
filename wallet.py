@@ -1,13 +1,10 @@
-from telegram import Update, ForceReply
-from telegram.ext import Updater, CommandHandler, MessageHandler, Filters, CallbackContext, ConversationHandler
-
-from backtest import backtesting
-
-
-#Load Telegram Bot Token
 import os
 from dotenv import load_dotenv
+from telegram import Update, ForceReply
+from telegram.ext import Updater, CommandHandler, MessageHandler, Filters, CallbackContext, ConversationHandler
+from backtest import backtesting
 
+# Retrieve Token
 load_dotenv()
 API_TOKEN = os.getenv("TOKEN")
 
@@ -19,11 +16,10 @@ logging.basicConfig(
 
 logger = logging.getLogger(__name__)
 
-#Local dictionaries to store users' input
+# Local dictionaries to store users' input
 data = {'symbol': "", 'day': "", 'month': "", 'year': ""}
-SYMBOL, DATE = range(2)
 wallet = {}
-ADD, REMOVE, CHECK = range(3)
+SYMBOL, DATE, ADD, REMOVE, CHECK = range(5)
 
 '''
 General Functions - Command Handlers
@@ -35,7 +31,6 @@ def start(update: Update, context: CallbackContext) -> None:
         fr'Hi {user.mention_markdown_v2()}\!',
         reply_markup=ForceReply(selective=True),
     )
-
 
 def help_command(update: Update, context: CallbackContext) -> None:
     """Send a message when the command /help is issued."""
@@ -57,6 +52,7 @@ def echo(update: Update, context: CallbackContext) -> None:
 '''
 Backtesting Functions - Command Handlers
 '''
+
 def backtest(update: Update, context: CallbackContext) -> int:
     global data
     
@@ -78,7 +74,7 @@ def date(update: Update, context: CallbackContext) -> int:
     try:
         results = backtesting(data['symbol'], data['day'], data['month'], data['year'])
     except: 
-        update.message.reply_text("You did not type the right symbol or date.\n\nLet's redo!\nType in the stock symbol to backtest (e.g AAPL):")
+        update.message.reply_text("You did not type in the correct symbol or date.\n\nTry again or press /cancel to quit.\n\nType in the stock symbol to backtest (e.g AAPL):")
         return SYMBOL
     else: 
         update.message.reply_text(f"Backtesting {data['symbol'].upper()} from: {update.message.text[0:2]}/{update.message.text[2:4]}/{update.message.text[4:]}" )
@@ -89,45 +85,40 @@ def date(update: Update, context: CallbackContext) -> int:
 
 def gmma(update: Update, context: CallbackContext) -> None:
     msg = "GMMA is a technical indicator that identifies changes in trends, providing an objective method to know when to get in and when to get out of a trade."
-    msg2 = "6 short-term EMAs in red (3, 5, 8, 10, 12, 15), and 6 long-term EMAs in blue (30, 35, 40, 35, 50, 60) are used.\n\nWhen red crosses above blue (i.e Red White Blue), it is a Buy Signal.\n\nWhen blue crosses above red (i.e Blue White Red), it is a Sell Signal/"
+    msg2 = "6 short-term EMAs in red (3, 5, 8, 10, 12, 15), and 6 long-term EMAs in blue (30, 35, 40, 35, 50, 60) are used.\n\nWhen red crosses above blue (i.e Red White Blue), it is a Buy Signal.\n\nWhen blue crosses above red (i.e Blue White Red), it is a Sell Signal."
     update.message.reply_text(msg)
     update.message.reply_text(msg2)
-
-def trial(update: Update, context: CallbackContext) -> None:
-    msg = """I got all data
-    symbol: {}
-    day: {}
-    month: {}
-    year: {}""".format(data['symbol'], data['day'], data['month'], data['year'])
-    update.message.reply_text(msg)
-
-
+    
 '''
 Wallet Functions - Command Handlers
 '''
 
 def new_entry(update: Update, context: CallbackContext) -> int:
-    update.message.reply_text("Insert stocks to your wallet.\n\n Type in the stock symbol, amount and price \n separated by a space (e.g AAPL 10 172.00):")
+    update.message.reply_text("Insert stocks to your wallet.\n\nType in the stock symbol, amount and price, \nseparated by a space (e.g AAPL 10 172.00):")
     return ADD
 
 def add(update: Update, context: CallbackContext) -> int:
     """Put the entry into the wallet"""
     # Obtain data from text
     inputs = update.message.text.split(" ")
-    to_add = [inputs[0].upper(), int(inputs[1]), float("{:.2f}".format(float(inputs[2])))]
+    to_add = [inputs[0].upper(), int(inputs[1]), float("{:.2f}".format(float(inputs[2])))] 
+    return error_add(update, context, to_add)
+
+def error_add(update: Update, context: CallbackContext, to_add) -> None:
     try:
         results = backtesting(to_add[0], '01', '01', '2020')
         if to_add[0] in wallet:
-            update.message.reply_text("Stock already added. Try again")
+            update.message.reply_text("Stock has already been added.\nTry to add again or type /cancel to quit.")
+            update.message.reply_text("Type in the stock symbol, amount and price,\nseparated by a space (e.g AAPL 10 172.00):")
             return ADD
         else:
             wallet[to_add[0]] = to_add[1:]
             update.message.reply_text("Added successfully.")
             return check(update, context)
     except: 
-        update.message.reply_text("Invalid entry. Try again")
+        update.message.reply_text("You did not type in the correct symbol.\nTry to add again or type /cancel to quit.")
+        update.message.reply_text("Type in the stock symbol, amount and price,\nseparated by a space (e.g AAPL 10 172.00):")
         return ADD
-
 
 def check(update: Update, context: CallbackContext) -> None:
     """Check current wallet"""
@@ -145,7 +136,7 @@ def remove_entry(update: Update, context: CallbackContext) -> int:
     if len(wallet) == 0:
         update.message.reply_text("Your wallet is currently empty")
     else:
-        update.message.reply_text("Remove stock from your wallet. \n\n Type in the stock symbol and amount \n separated by a space (e.g AAPL 10 ):")
+        update.message.reply_text("Remove stock from your wallet.\n\nType in the stock symbol and amount,\nseparated by a space (e.g AAPL 10 ):")
         check(update, context)
     return REMOVE
 
@@ -153,14 +144,19 @@ def remove(update: Update, context: CallbackContext) -> int:
     inputs = update.message.text.split(" ")
     sym = inputs[0].upper()
     amt = int(inputs[1])
+    return error_remove(update, context, sym, amt)
+
+def error_remove(update: Update, context: CallbackContext, sym, amt) -> None:
     try:
         results = backtesting(sym, '01', '01', '2020')
         if sym not in wallet:
-            update.message.reply_text("No stocks found. Try again")
+            update.message.reply_text("No such stock found in your wallet. Try again or type /cancel to quit")
+            update.message.reply_text("Remove stock from your wallet.\n\nType in the stock symbol and amount,\nseparated by a space (e.g AAPL 10):")
             return REMOVE
         else:
             if amt <= 0 or amt > wallet[sym][0]:
-                update.message.reply_text("Invalid amount. Try again")
+                update.message.reply_text("Invalid amount.\nTry to remove again or type /cancel to quit")
+                update.message.reply_text("Type in the stock symbol and amount,\nseparated by a space (e.g AAPL 10):")
                 return REMOVE
             elif amt == wallet[sym][0]:
                 wallet.pop(sym)
@@ -172,7 +168,8 @@ def remove(update: Update, context: CallbackContext) -> int:
                 update.message.reply_text("Removed successfully.")
                 return check(update, context)
     except:
-        update.message.reply_text("Invalid entry. Try again")
+        update.message.reply_text("Invalid entry.\nTry to remove again or type /cancel to quit.")
+        update.message.reply_text("Type in the stock symbol and amount,\nseparated by a space (e.g AAPL 10):")
         return REMOVE
 
 def main() -> None:
@@ -232,13 +229,11 @@ def main() -> None:
     dispatcher.add_handler(CommandHandler("start", start))
     dispatcher.add_handler(CommandHandler("help", help_command))
     dispatcher.add_handler(CommandHandler("check", check))
+    dispatcher.add_handler(CommandHandler("gmma", gmma))
+    dispatcher.add_handler(CommandHandler("cancel", cancel))
+    dispatcher.add_handler(conv_handler)
     dispatcher.add_handler(conv_handler_1)
     dispatcher.add_handler(conv_handler_2)
-    dispatcher.add_handler(CommandHandler("trial", trial))
-    dispatcher.add_handler(CommandHandler("gmma", gmma))
-    dispatcher.add_handler(conv_handler)
-    dispatcher.add_handler(CommandHandler("cancel", cancel))
-
 
     # on non command i.e message - echo the message on Telegram
     #dispatcher.add_handler(MessageHandler(Filters.text & ~Filters.command, echo))
