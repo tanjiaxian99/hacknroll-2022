@@ -40,7 +40,7 @@ from PIL import Image
 from io import BytesIO
 import yfinance as yf
 
-PORT = int(os.getenv("PORT", 80))
+PORT = int(os.getenv("PORT", 8443))
 
 # Define a few command handlers. These usually take the two arguments update and
 # context.
@@ -155,9 +155,9 @@ def main() -> None:
 
     # Start the Bot
     updater.start_webhook(listen="0.0.0.0",
-                          port=int(PORT),
-                          url_path=TOKEN)
-    updater.bot.setWebhook('https://floating-earth-81212.herokuapp.com/' + TOKEN)
+                          port=PORT,
+                          url_path=TOKEN, 
+                          webhook_url='https://floating-earth-81212.herokuapp.com/' + TOKEN)
 
     # Run the bot until you press Ctrl-C or the process receives SIGINT,
     # SIGTERM or SIGABRT. This should be used most of the time, since
