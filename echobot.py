@@ -81,6 +81,9 @@ def stocks_command(update: Update, context: CallbackContext) -> None:
     update.message.reply_text("Which time period are you interested in?", reply_markup=reply_markup)
 
 def stocks_callback(update: Update, context: CallbackContext) -> None:
+    update.effective_message.delete()
+
+    # Retrieve time period
     query = update.callback_query
     query.answer()
     choice = query.data
@@ -130,10 +133,10 @@ def stocks_callback(update: Update, context: CallbackContext) -> None:
         caption = caption_format.format(url=url, symbol=ticker_info["symbol"], open=ticker_info["open"], 
             previous_close=ticker_info["previousClose"], volume=ticker_info["volume"])
 
-        # wait_message.delete()
+        wait_message.delete()
         update.effective_message.reply_photo(im, caption=caption, parse_mode=constants.PARSEMODE_HTML)
     except:
-        # wait_message.delete()
+        wait_message.delete()
         update.effective_message.reply_photo(im, caption="Unable to retrieve ticker information")
 
 def main() -> None:
