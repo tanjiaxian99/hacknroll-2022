@@ -57,27 +57,39 @@ from PIL import Image
 from io import BytesIO
 
 def stocks_command(update: Update, context: CallbackContext) -> None:
+    # Ensure that a stock name has been given
+    if len(context.args) == 0:
+        update.message.reply_text("Invalid command. Please key in a stock name, and optionally the time period. " +
+        "E.g. /stocks apple 1m")
+        return
+
+    # Opens page for associated stock
+    stock_name = context.args[0]
     driver = webdriver.Chrome(ChromeDriverManager().install())
     driver.get("https://www.google.com/finance/")
     element = driver.find_element_by_xpath("//body/c-wiz[1]/div[1]/div[3]/div[3]/div[1]/div[1]/div[1]/div[1]/input[2]")
-    element.send_keys(context.args[0])
+    element.send_keys(stock_name)
     element.send_keys(Keys.ENTER)
+    time.sleep(0.5)
 
-    time.sleep(1)
-
-    url = driver.current_url
-    driver.get(url + "?window=" + context.args[1])
-    time.sleep(1)
-
+    # Opens page with the correct time period if it exists
+    if len(context.args) >= 2:
+        time_period = context.args[1]
+        url = driver.current_url
+        driver.get(url + "?window=" + time_period)
+    
+    # Retrieve the screenshot
+    time.sleep(0.5)
     png = driver.get_screenshot_as_png()
     driver.close()
 
+    # Crop the screenshot
     im = Image.open(BytesIO(png))
     im = im.crop((0, 172, 912, 648))
-
     img_byte_arr = BytesIO()
     im.save(img_byte_arr, format="PNG")
     im = img_byte_arr.getvalue()
+
     update.message.reply_photo(im)
 
 def main() -> None:
