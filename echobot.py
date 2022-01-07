@@ -57,29 +57,17 @@ from PIL import Image
 from io import BytesIO
 
 def stocks_command(update: Update, context: CallbackContext) -> None:
-    """Echo the user message."""
-    # update.message.reply_text(update.message.text)
-    # data = pdr.get_data_yahoo("SPY", start="2017-01-01", end="2017-04-30")
-    # update.message.reply_text(data)
-    # stock = yf.Ticker("SPY")
-    # print(stock.info)
-    # history = stock.history(period="1d", interval="15m")
-    
-    # plt.plot(history.index.values, history["Open"])
-    # plt.savefig("plot.png")
-    # update.message.reply_photo(open("plot.png"))
-    # # print(context.args)
-    # print("Hello world")
-
     driver = webdriver.Chrome(ChromeDriverManager().install())
     driver.get("https://www.google.com/finance/")
     element = driver.find_element_by_xpath("//body/c-wiz[1]/div[1]/div[3]/div[3]/div[1]/div[1]/div[1]/div[1]/input[2]")
-    element.send_keys("gamestop")
+    element.send_keys(context.args[0])
     element.send_keys(Keys.ENTER)
 
     time.sleep(2)
 
     png = driver.get_screenshot_as_png()
+    driver.close()
+    
     im = Image.open(BytesIO(png))
     im = im.crop((0, 172, 912, 648))
 
