@@ -58,8 +58,7 @@ def help_command(update: Update, context: CallbackContext) -> None:
 def stocks_command(update: Update, context: CallbackContext) -> None:
     # Ensure that a stock name has been given
     if len(context.args) == 0:
-        update.message.reply_text("Invalid command. Please key in a stock name, and optionally the time period. " +
-        "E.g. /stocks apple 1m")
+        update.message.reply_text("Wrong command leh. Give me a stock name like /stocks apple")
         return
 
     stock_name = context.args[0]
@@ -78,7 +77,7 @@ def stocks_command(update: Update, context: CallbackContext) -> None:
             InlineKeyboardButton("MAX", callback_data="MAX_" + stock_name),
         ]
     ])
-    update.message.reply_text("Which time period are you interested in?", reply_markup=reply_markup)
+    update.message.reply_text("Lai lai choose a time period", reply_markup=reply_markup)
 
 def stocks_callback(update: Update, context: CallbackContext) -> None:
     update.effective_message.delete()
@@ -90,7 +89,7 @@ def stocks_callback(update: Update, context: CallbackContext) -> None:
     [time_period, stock_name] = choice.split("_")
 
     # Send wait message
-    wait_message = update.effective_message.reply_text("We are fetching your stock information. Hang on tight!")
+    wait_message = update.effective_message.reply_text("Wait ah I fetching your stock information")
 
     # Opens page for associated stock
     driver = webdriver.Chrome(ChromeDriverManager().install())
@@ -106,7 +105,7 @@ def stocks_callback(update: Update, context: CallbackContext) -> None:
         ticker_symbol = ticker_exchange.split(":")[0]
     except:
         wait_message.delete()
-        update.message.reply_text("Invalid stock name. Please key in a valid stock name.")
+        update.message.reply_text("Cannot find the stock leh. Give me a valid stock name")
         return
 
     url = url + "?window=" + time_period
@@ -137,7 +136,7 @@ def stocks_callback(update: Update, context: CallbackContext) -> None:
         update.effective_message.reply_photo(im, caption=caption, parse_mode=constants.PARSEMODE_HTML)
     except:
         wait_message.delete()
-        update.effective_message.reply_photo(im, caption="Unable to retrieve ticker information")
+        update.effective_message.reply_photo(im, caption="Sorry ah don't have ticker information")
 
 def main() -> None:
     """Start the bot."""
