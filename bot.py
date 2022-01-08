@@ -1,12 +1,19 @@
 import os
 from dotenv import load_dotenv
-from telegram import Update, ForceReply, InlineKeyboardButton, InlineKeyboardMarkup
+from telegram import Update, ForceReply, InlineKeyboardButton, InlineKeyboardMarkup, constants
 from telegram.ext import Updater, CommandHandler, MessageHandler, Filters, CallbackContext, ConversationHandler, CallbackQueryHandler
 from backtest import backtesting
 
 import yfinance as yf
 import datetime as dt
 from pandas_datareader import data as pdr
+
+from selenium import webdriver
+from webdriver_manager.chrome import ChromeDriverManager
+from selenium.webdriver.common.keys import Keys
+import time
+from PIL import Image
+from io import BytesIO
 
 # Retrieve Token
 load_dotenv()
@@ -22,67 +29,41 @@ logger = logging.getLogger(__name__)
 
 # Local dictionaries to store users' input
 data = {'symbol': "", 'day': "", 'month': "", 'year': ""}
-wallet = {"AAPL": [12,222.2]}
+wallet = {}
 SYMBOL, DATE, ADD, REMOVE, CHECK = range(5)
 
 '''
 General Functions - Command Handlers
 '''
-def start(update: Update, context: CallbackContext) -> None:
+def start(update: Update, context: CallbackContext):
     update.effective_message.reply_text(
         """Welcome to InvestLiao. If you just come one, click /help then uncle will show you how""")
 
-def help_command(update: Update, context: CallbackContext) -> None:
-    update.message.reply_text(
+
+def help_command(update: Update, context: CallbackContext):
+    update.effective_message.reply_text(
     """Come come let me show you what uncle can do.
 /wallet - maintain your stock wallet for you
 /stocks [stock_name] - show what stocks you want me to show
 /backtest [stock_name] [date] - come test our amazing algo trading software
     """)
+
 
 def cancel(update: Update, context: CallbackContext) -> int:
     update.effective_message.reply_text('canceled')
     # end of conversation
     return ConversationHandler.END
 
-def echo(update: Update, context: CallbackContext) -> None:
-    """Echo the user message."""
-    user = update.effective_user
-    update.effective_message.reply_markdown_v2 (
-        fr'What would you like me to do, {user.mention_markdown_v2()}\?',
-        reply_markup=ForceReply(selective=True),
-    )
-
 '''
 Stocks Graph Functions - Command Handlers
 '''
-from selenium import webdriver
-from webdriver_manager.chrome import ChromeDriverManager
-from selenium.webdriver.common.keys import Keys
-import time
-from PIL import Image
-from io import BytesIO
 
 PORT = int(os.getenv("PORT", 8443))
-
-# Define a few command handlers. These usually take the two arguments update and
-# context.
-def start(update: Update, context: CallbackContext) -> None:
-    update.effective_message.reply_text(
-        """Welcome to InvestLiao. If you just come one, click /help then uncle will show you how""")
-
-def help_command(update: Update, context: CallbackContext) -> None:
-    update.message.reply_text(
-    """Come come let me show you what uncle can do.
-/wallet - maintain your stock wallet for you
-/stocks [stock_name] - show what stocks you want me to show
-/backtest [stock_name] [date] - come test our amazing algo trading software
-    """)
 
 def stocks_command(update: Update, context: CallbackContext) -> None:
     # Ensure that a stock name has been given
     if len(context.args) == 0:
-        update.message.reply_text("Wrong command leh. Give me a stock name so become /stocks apple")
+        update.effective_message.reply_text("Wrong command leh. Give me a stock name so become /stocks apple")
         return
 
     stock_name = context.args[0]
@@ -101,17 +82,46 @@ def stocks_command(update: Update, context: CallbackContext) -> None:
             InlineKeyboardButton("MAX", callback_data="MAX_" + stock_name),
         ]
     ])
-    update.message.reply_text("Lai lai choose a time period", reply_markup=reply_markup)
+    update.effective_message.reply_text("Lai lai choose a time period", reply_markup=reply_markup)
 
-def stocks_callback(update: Update, context: CallbackContext) -> None:
+def stocks_callback(update: Update, context: CallbackContext) -> int:
     update.effective_message.delete()
 
     # Retrieve time period
     query = update.callback_query
     query.answer()
     choice = query.data
-    [time_period, stock_name] = choice.split("_")
+    if "_" in choice:
+        [time_period, stock_name] = choice.split("_")
 
+    
+    if choice == 'Yes':
+        clear_wallet(update, context)
+        return ConversationHandler.END
+
+    if choice == 'Cancel':
+        cancel(update, context)
+
+    
+    if choice == 'Add':
+        new_entry(update, context)
+        return ADD
+
+    
+    if choice == 'Remove':
+        remove_entry(update, context)
+        return REMOVE
+
+
+    if choice == 'Calculate':
+        calculate(update, context)
+        return ConversationHandler.END
+
+
+    if choice == 'Clear All':
+        clear_all(update, context)
+        return ConversationHandler.END
+    
     # Send wait message
     wait_message = update.effective_message.reply_text("Wait ah I fetching your stock information")
 
@@ -129,7 +139,7 @@ def stocks_callback(update: Update, context: CallbackContext) -> None:
         ticker_symbol = ticker_exchange.split(":")[0]
     except:
         wait_message.delete()
-        update.message.reply_text("Cannot find the stock leh. Give me a valid stock name")
+        update.effective_message.reply_text("Cannot find the stock leh. Give me a valid stock name")
         return
 
     url = url + "?window=" + time_period
@@ -170,18 +180,17 @@ Backtesting Functions - Command Handlers
 
 def backtest(update: Update, context: CallbackContext) -> int:
     global data
-    
     """Create new empty dictionary"""
     data = {'symbol': "", 'date' : ""}
     update.effective_message.reply_text("Come we backtest using Guppy Multiple Moving Average.\n\nWhat stock symbol to backtest (e.g AAPL)?")
     return SYMBOL
 
 def symbol(update: Update, context: CallbackContext) -> int:
-    data['symbol'] = update.effective_message.text
-    update.effective_message.reply_text(f"You want: {update.message.text.upper()}\n\nNow type the date to backtest from, in DDMMYYYY format (e.g 01012020):")
+    data['symbol'] = update.message.text
+    update.effective_message.reply_text(f"You want: {update.effective_message.text.upper()}\n\nNow type the date to backtest from, in DDMMYYYY format (e.g 01012020):")
     return DATE
 
-def date(update: Update, context: CallbackContext) -> int:
+def date(update: Update, context: CallbackContext, ) -> int:
     data['day'] = update.effective_message.text[0:2]
     data['month'] = update.effective_message.text[2:4]
     data['year'] = update.effective_message.text[4:] 
@@ -217,7 +226,7 @@ def new_entry(update: Update, context: CallbackContext) -> int:
 def add(update: Update, context: CallbackContext) -> int:
     """Put the entry into the wallet"""
     # Obtain data from text
-    inputs = update.message.text.split(" ")
+    inputs = update.effective_message.text.split(" ")
     to_add = [inputs[0].upper(), int(inputs[1]), float("{:.2f}".format(float(inputs[2])))] #name, qty, price 
     return error_add(update, context, to_add)
 
@@ -225,8 +234,8 @@ def error_add(update: Update, context: CallbackContext, to_add) -> None:
     try:
         results = backtesting(to_add[0], '01', '01', '2020')
     except: 
-        update.message.reply_text("Eh your symbol is wrong.\nTry to add again or type /cancel to panggang.")
-        update.message.reply_text("Type in the stock symbol, amount bought and buy price,\nseparated by a space (e.g AAPL 10 172.00):")
+        update.effective_message.reply_text("Eh your symbol is wrong.\nTry to add again or type /cancel to panggang.")
+        update.effective_message.reply_text("Type in the stock symbol, amount bought and buy price,\nseparated by a space (e.g AAPL 10 172.00):")
         return ADD
     else: 
         if to_add[0] in wallet:
@@ -238,23 +247,22 @@ def error_add(update: Update, context: CallbackContext, to_add) -> None:
             prev_pri = wallet.get(to_add[0])[1] * prev_qty
             new_pri = (prev_pri + to_add[2]*to_add[1])/new_qty
             wallet.get(to_add[0])[1] = new_pri
-            update.message.reply_text("Added liao.")
+            update.effective_message.reply_text("Added liao.")
             return check(update, context)
         else:
             wallet[to_add[0]] = to_add[1:]
-            update.message.reply_text("Added liao.")
+            update.effective_message.reply_text("Added liao.")
             return check(update, context)
 
-def check(update: Update, context: CallbackContext) -> None:
+def check(update: Update, context: CallbackContext):
     """Check current wallet"""
     if len(wallet) == 0:
-        update.message.reply_text("Your wallet bo liu leh")
+        update.effective_message.reply_text("Your wallet bo liu leh")
     else:
         sortedWallet = sorted(wallet.keys())
-        update.message.reply_text("Your wallet:")
+        update.effective_message.reply_text("Your wallet:")
         for i in sortedWallet:
-            update.message.reply_text("{}, Amount bought: {}, Average Price: {}".format(i, wallet[i][0], wallet[i][1]))
-    
+            update.effective_message.reply_text("{}, Amount bought: {}, Average Price: {}".format(i, wallet[i][0], wallet[i][1]))
 
     keyboard = [
         [
@@ -282,7 +290,7 @@ def remove_entry(update: Update, context: CallbackContext) -> int:
     return REMOVE
 
 def remove(update: Update, context: CallbackContext) -> int:
-    inputs = update.message.text.split(" ")
+    inputs = update.effective_message.text.split(" ")
     sym = inputs[0].upper()
     amt = int(inputs[1])
     price = float(inputs[2])
@@ -292,23 +300,23 @@ def error_remove(update: Update, context: CallbackContext, sym, amt, price) -> N
     try:
         results = backtesting(sym, '01', '01', '2020')
     except:
-        update.message.reply_text("Wrong entry leh.\nTry to remove again or type /cancel to panggang.")
-        update.message.reply_text("Type in the stock symbol, amount sold and sell price,\nseparated by a space (e.g AAPL 10):")
+        update.effective_message.reply_text("Wrong entry leh.\nTry to remove again or type /cancel to panggang.")
+        update.effective_message.reply_text("Type in the stock symbol, amount sold and sell price,\nseparated by a space (e.g AAPL 10):")
         return REMOVE
     else:
         if sym not in wallet:
-            update.message.reply_text("Where got such stock? Try again or type /cancel to panggang")
-            update.message.reply_text("Sell stock is it?")
-            update.message.reply_text("Type in the stock symbol, amount sold and sell price,\nseparated by a space (e.g AAPL 10):")
+            update.effective_message.reply_text("Where got such stock? Try again or type /cancel to panggang")
+            update.effective_message.reply_text("Sell stock is it?")
+            update.effective_message.reply_text("Type in the stock symbol, amount sold and sell price,\nseparated by a space (e.g AAPL 10):")
             return REMOVE
         else:
             if amt <= 0 or amt > wallet.get(sym)[0]:
-                update.message.reply_text("Wrong amount sia.\nTry to remove again or type /cancel to panggang")
-                update.message.reply_text("Type in the stock symbol, amount sold and sell price,\nseparated by a space (e.g AAPL 10):")
+                update.effective_message.reply_text("Wrong amount sia.\nTry to remove again or type /cancel to panggang")
+                update.effective_message.reply_text("Type in the stock symbol, amount sold and sell price,\nseparated by a space (e.g AAPL 10):")
                 return REMOVE
             elif amt == wallet.get(sym)[0]:
                 wallet.pop(sym)
-                update.message.reply_text("Successful Huat Ah!")
+                update.effective_message.reply_text("Successful Huat Ah!")
                 return check(update, context)
             else:
                 # Update quantity symbol : [qty, price]
@@ -319,7 +327,7 @@ def error_remove(update: Update, context: CallbackContext, sym, amt, price) -> N
                 prev_pri = wallet.get(sym)[1] * prev_qty
                 new_pri = (prev_pri - amt*price)/new_qty
                 wallet.get(sym)[1] = new_pri
-                update.message.reply_text("Successful Huat Ah!")
+                update.effective_message.reply_text("Successful Huat Ah!")
                 return check(update, context)
 
 def clear_all(update: Update, context: CallbackContext) -> None:
@@ -341,11 +349,9 @@ def clear_wallet(update: Update, context: CallbackContext) -> None:
     update.effective_message.reply_text("No more stocks hor.")
     check(update, context)
 
-'''
-Calculate Functions - Command Handlers
-'''
+
 yf.pdr_override()
-def calculate(update: Update, context: CallbackContext) -> None:
+def calculate(update: Update, context: CallbackContext):
     start = dt.datetime(2020, 12, 25)
     now = dt.datetime.now()
     sortedWallet = sorted(wallet.keys())
@@ -363,42 +369,13 @@ def calculate(update: Update, context: CallbackContext) -> None:
         update.effective_message.reply_text("Lose money sian...")
     else:
         update.effective_message.reply_text("Huat Ah!")
+    return ConversationHandler.END
+
+
 
 '''
-Inline Keyboard Buttons
+Main Function
 '''
-def button(update: Update, context: CallbackContext) -> None:
-    query = update.callback_query
-    query.answer()
-    
-    choice = query.data
-    
-    # Define what choice do what
-    if choice == 'Yes':
-        clear_wallet(update, context)
-
-
-    if choice == 'Cancel':
-        cancel(update, context)
-
-    
-    if choice == 'Add':
-        new_entry(update, context)
-        return ADD
-
-    
-    if choice == 'Remove':
-        remove_entry(update, context)
-        return REMOVE
-
-
-    if choice == 'Calculate':
-        calculate(update, context)
-
-
-    if choice == 'Clear All':
-        clear_all(update, context)
-
 
 def main() -> None:
     """Start the bot."""
@@ -409,7 +386,7 @@ def main() -> None:
     dispatcher = updater.dispatcher
     
     conv_handler = ConversationHandler (
-        entry_points=[CommandHandler('backtest', backtest)],
+        entry_points=[MessageHandler(~Filters.regex(r' '), symbol)],
         states={
             SYMBOL: [
                 CommandHandler('cancel', cancel),  # has to be before MessageHandler to catch `/cancel` as command, not as `title`
@@ -420,11 +397,11 @@ def main() -> None:
                 MessageHandler(Filters.text, date)
             ]
         },
-        fallbacks=[CommandHandler('cancel', cancel)]
+        fallbacks=[CommandHandler('cancel', cancel)],
     )
     
     conv_handler_1 = ConversationHandler (
-        entry_points=[CallbackQueryHandler(button)],
+        entry_points=[CallbackQueryHandler(stocks_callback)],
         states={
             ADD: [
                 CommandHandler('cancel', cancel),  # has to be before MessageHandler to catch `/cancel` as command, not as `title`
@@ -441,28 +418,21 @@ def main() -> None:
         },
         fallbacks=[CommandHandler('cancel', cancel)]
     )
-    
+
     # on different commands - answer in Telegram
     dispatcher.add_handler(CommandHandler("start", start))
     dispatcher.add_handler(CommandHandler("help", help_command))
     dispatcher.add_handler(CommandHandler("stocks", stocks_command))
     dispatcher.add_handler(CommandHandler("wallet", check))
     dispatcher.add_handler(CommandHandler("backtest", backtest))
-    dispatcher.add_handler(CallbackQueryHandler(stocks_callback))
     dispatcher.add_handler(CommandHandler("gmma", gmma))
     dispatcher.add_handler(CommandHandler("cancel", cancel))
     dispatcher.add_handler(conv_handler)
     dispatcher.add_handler(conv_handler_1)
-    dispatcher.add_handler(CallbackQueryHandler(button))
+    dispatcher.add_handler(CallbackQueryHandler(stocks_callback))
 
-    # on non command i.e message - echo the message on Telegram
-    #dispatcher.add_handler(MessageHandler(Filters.text & ~Filters.command, echo))
+    # Start the Bot
 
-    # # Start the Bot
-    # updater.start_webhook(listen="0.0.0.0",
-    #                       port=PORT,
-    #                       url_path=API_TOKEN, 
-    #                       webhook_url='https://floating-earth-81212.herokuapp.com/' + API_TOKEN)
 
     updater.start_polling()
     # Run the bot until you press Ctrl-C or the process receives SIGINT,
