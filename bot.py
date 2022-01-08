@@ -390,11 +390,11 @@ def main() -> None:
         states={
             SYMBOL: [
                 CommandHandler('cancel', cancel),  # has to be before MessageHandler to catch `/cancel` as command, not as `title`
-                MessageHandler(Filters.text, symbol)
+                MessageHandler(~Filters.regex(r' '), symbol)
             ],
             DATE: [
                 CommandHandler('cancel', cancel),  # has to be before MessageHandler to catch `/cancel` as command, not as `title`
-                MessageHandler(Filters.text, date)
+                MessageHandler(~Filters.regex(r' '), date)
             ]
         },
         fallbacks=[CommandHandler('cancel', cancel)],
