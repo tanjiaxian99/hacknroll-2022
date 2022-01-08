@@ -1,6 +1,6 @@
-# FinanceBros Bot
+# investLiao Bot
 
-A Telegram bot that provides commands to
+An SG-Uncle-Themed Telegram bot that provides commands to
 
 - Display real-time stock market data and charts from Yahoo Finance.
 - Track user's investments.
